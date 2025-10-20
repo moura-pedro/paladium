@@ -183,6 +183,7 @@ export async function confirmBooking(params: ConfirmBookingParams) {
 
 /**
  * Get user's bookings with optional status filter
+ * By default, excludes cancelled bookings unless status is 'all'
  */
 export async function getMyBookings(
   userId: string,
@@ -192,25 +193,46 @@ export async function getMyBookings(
 
   const query: any = { guestId: userId };
 
-  if (status === 'upcoming') {
-    query.from = { $gte: new Date() };
+  // Default behavior: exclude cancelled bookings unless explicitly requesting 'all'
+  if (status !== 'all') {
     query.status = { $nin: ['cancelled'] };
-  } else if (status === 'past') {
-    query.to = { $lt: new Date() };
   }
 
-  const bookings = await Booking.find(query)
+  if (status === 'upcoming') {
+    query.from = { $gte: new Date() };
+  } else if (status === 'past') {
+    query.to = { $lt: new Date() };
+  } else if (!status || status === 'all') {
+    // For default (no status) or 'all', show active bookings sorted by date
+    // 'all' will include cancelled because we skip the filter above
+    // No status defaults to active bookings only (already filtered above)
+  }
+
+  let bookings = await Booking.find(query)
     .populate('propertyId')
-    .sort({ from: -1 })
     .lean();
 
-  const results = bookings.map((b: any) => ({
+  const now = new Date();
+  
+  // Split bookings into upcoming and past
+  const upcomingBookings = bookings.filter((b: any) => new Date(b.from) >= now);
+  const pastBookings = bookings.filter((b: any) => new Date(b.from) < now);
+  
+  // Sort upcoming (soonest first) and past (most recent first)
+  upcomingBookings.sort((a: any, b: any) => new Date(a.from).getTime() - new Date(b.from).getTime());
+  pastBookings.sort((a: any, b: any) => new Date(b.from).getTime() - new Date(a.from).getTime());
+  
+  // Combine: upcoming first, then past
+  const sortedBookings = [...upcomingBookings, ...pastBookings];
+
+  const results = sortedBookings.map((b: any) => ({
     bookingId: b._id.toString(), // Primary field name for clarity
     id: b._id.toString(), // Keep for backward compatibility
     property: {
       id: b.propertyId._id.toString(),
       title: b.propertyId.title,
       location: formatLocation(b.propertyId.location),
+      images: b.propertyId.images || [], // Include images for card display
     },
     // Format dates using UTC to avoid timezone issues
     checkIn: `${b.from.getUTCFullYear()}-${String(b.from.getUTCMonth() + 1).padStart(2, '0')}-${String(b.from.getUTCDate()).padStart(2, '0')}`,

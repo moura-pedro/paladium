@@ -107,14 +107,14 @@ export const agentTools: OpenAI.Chat.ChatCompletionTool[] = [
     type: 'function',
     function: {
       name: 'get_my_bookings',
-      description: 'Get the user\'s bookings. Can filter by status.',
+      description: 'Get the user\'s bookings. By default excludes cancelled bookings. Use "upcoming" for future trips, "past" for completed trips, or "all" to include cancelled bookings.',
       parameters: {
         type: 'object',
         properties: {
           status: {
             type: 'string',
             enum: ['upcoming', 'past', 'all'],
-            description: 'Filter bookings by status. "upcoming" for future bookings, "past" for completed ones, "all" for everything.',
+            description: 'Filter bookings by status. Default/no parameter: active bookings only (excludes cancelled). "upcoming": future active bookings. "past": completed bookings. "all": includes cancelled bookings.',
           },
         },
       },

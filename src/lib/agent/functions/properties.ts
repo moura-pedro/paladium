@@ -96,6 +96,7 @@ export async function searchProperties(params: SearchPropertiesParams) {
     bedrooms: p.bedrooms,
     bathrooms: p.bathrooms,
     amenities: p.amenities,
+    images: p.images || [], // Include images for display
   }));
   
   console.log('✓ Returning search results:');

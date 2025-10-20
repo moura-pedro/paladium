@@ -2,10 +2,15 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
+import PropertyCard, { PropertyCardData } from '@/components/PropertyCard';
+import PropertyDetailsModal from '@/components/PropertyDetailsModal';
+import BookingCard, { BookingCardData } from '@/components/BookingCard';
 
 interface Message {
   role: 'user' | 'assistant';
   content: string;
+  properties?: PropertyCardData[];
+  bookings?: BookingCardData[];
 }
 
 export default function ChatPage() {
@@ -19,6 +24,8 @@ export default function ChatPage() {
   const [loading, setLoading] = useState(false);
   const [recording, setRecording] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const [selectedProperty, setSelectedProperty] = useState<PropertyCardData | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -52,6 +59,17 @@ export default function ChatPage() {
       const data = await response.json();
 
       if (response.ok) {
+        // Debug logging
+        console.log('📨 Received response:', {
+          hasMessage: !!data.message,
+          hasProperties: !!data.properties,
+          propertiesCount: data.properties?.length || 0,
+          hasBookings: !!data.bookings,
+          bookingsCount: data.bookings?.length || 0,
+          properties: data.properties,
+          bookings: data.bookings,
+        });
+
         // Save conversation ID for future messages
         if (data.conversationId) {
           setConversationId(data.conversationId);
@@ -60,7 +78,12 @@ export default function ChatPage() {
         const assistantMessage: Message = {
           role: 'assistant',
           content: data.message || 'I apologize, but I couldn\'t process that request.',
+          properties: data.properties, // Include property data if available
+          bookings: data.bookings, // Include booking data if available
         };
+        
+        console.log('💬 Assistant message:', assistantMessage);
+        
         setMessages(prev => [...prev, assistantMessage]);
       } else {
         const errorMessage: Message = {
@@ -94,6 +117,17 @@ export default function ChatPage() {
         content: 'Hello! I can help you find and book the perfect property. You can type or use the microphone to speak. How can I assist you today?',
       },
     ]);
+  };
+
+  const handleViewPropertyDetails = (property: PropertyCardData) => {
+    setSelectedProperty(property);
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    // Don't clear selectedProperty immediately to allow for exit animation
+    setTimeout(() => setSelectedProperty(null), 300);
   };
 
   const startRecording = async () => {
@@ -182,19 +216,49 @@ export default function ChatPage() {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="space-y-4">
             {messages.map((msg, idx) => (
-              <div
-                key={idx}
-                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
+              <div key={idx}>
                 <div
-                  className={`max-w-[80%] px-4 py-3 rounded-2xl ${
-                    msg.role === 'user'
-                      ? 'bg-foreground text-background'
-                      : 'glass'
-                  }`}
+                  className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
-                  <div className="whitespace-pre-wrap">{msg.content}</div>
+                  <div
+                    className={`max-w-[80%] px-4 py-3 rounded-2xl ${
+                      msg.role === 'user'
+                        ? 'bg-foreground text-background'
+                        : 'glass'
+                    }`}
+                  >
+                    <div className="whitespace-pre-wrap">{msg.content}</div>
+                  </div>
                 </div>
+                
+                {/* Property Cards */}
+                {msg.properties && msg.properties.length > 0 && (
+                  <div className="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {msg.properties.map((property) => (
+                      <PropertyCard
+                        key={property.propertyId}
+                        property={property}
+                        onViewDetails={handleViewPropertyDetails}
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {/* Booking Cards */}
+                {msg.bookings && msg.bookings.length > 0 && (
+                  <div className="mt-4 space-y-4">
+                    {msg.bookings.map((booking) => (
+                      <BookingCard
+                        key={booking.bookingId}
+                        booking={booking}
+                        onCancel={async (bookingId) => {
+                          // Ask the AI to cancel the booking
+                          await sendMessage(`Cancel booking ${bookingId}`);
+                        }}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
             
@@ -255,6 +319,13 @@ export default function ChatPage() {
           </p>
         </div>
       </div>
+
+      {/* Property Details Modal */}
+      <PropertyDetailsModal
+        property={selectedProperty}
+        isOpen={isModalOpen}
+        onClose={closeModal}
+      />
     </div>
   );
 }

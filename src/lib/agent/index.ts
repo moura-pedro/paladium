@@ -247,11 +247,41 @@ export async function processAgentMessage(
   conversation.lastActive = new Date();
   await conversation.save();
 
-  return {
+  // Extract property data if search_properties was called
+  let properties = undefined;
+  const searchPropertiesResult = toolResults.find(r => r.name === 'search_properties');
+  if (searchPropertiesResult && Array.isArray(searchPropertiesResult.result)) {
+    properties = searchPropertiesResult.result;
+    console.log(`📦 Including ${properties.length} properties in response`);
+  }
+
+  // Extract booking data if get_my_bookings was called
+  let bookings = undefined;
+  const getMyBookingsResult = toolResults.find(r => r.name === 'get_my_bookings');
+  if (getMyBookingsResult && Array.isArray(getMyBookingsResult.result)) {
+    bookings = getMyBookingsResult.result;
+    console.log(`📅 Including ${bookings.length} bookings in response`);
+  }
+
+  const agentResponse = {
     message: finalContent,
     conversationId: conversation._id.toString(),
     toolResults: toolResults.length > 0 ? toolResults : undefined,
+    properties, // Include property data for UI rendering
+    bookings, // Include booking data for UI rendering
   };
+
+  console.log('🔄 Response structure:', {
+    hasMessage: !!agentResponse.message,
+    hasConversationId: !!agentResponse.conversationId,
+    hasToolResults: !!agentResponse.toolResults,
+    hasProperties: !!agentResponse.properties,
+    propertiesCount: agentResponse.properties?.length || 0,
+    hasBookings: !!agentResponse.bookings,
+    bookingsCount: agentResponse.bookings?.length || 0,
+  });
+
+  return agentResponse;
 }
 
 // Export individual functions for direct use if needed
