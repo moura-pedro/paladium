@@ -167,7 +167,9 @@ export default function BookingForm({ propertyId, pricePerNight, userId }: Props
     }
   };
 
-  const today = new Date().toISOString().split('T')[0];
+  // Get today's date without timezone conversion
+  const todayDate = new Date();
+  const today = `${todayDate.getFullYear()}-${String(todayDate.getMonth() + 1).padStart(2, '0')}-${String(todayDate.getDate()).padStart(2, '0')}`;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">

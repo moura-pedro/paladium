@@ -53,13 +53,21 @@ export default function DatePicker({
     };
   }, [isOpen]);
 
+  // Helper to format date as YYYY-MM-DD without timezone conversion
+  const formatDateString = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   // Generate array of dates in a range
   const getDatesInRange = (start: Date, end: Date): string[] => {
     const dates: string[] = [];
     const current = new Date(start);
     
     while (current < end) { // Use < instead of <= to exclude the end date
-      dates.push(current.toISOString().split('T')[0]);
+      dates.push(formatDateString(current));
       current.setDate(current.getDate() + 1);
     }
     
@@ -91,11 +99,15 @@ export default function DatePicker({
     const days = [];
     const current = new Date(startDate);
     
+    // Get today's date string without timezone issues
+    const today = new Date();
+    const todayStr = formatDateString(today);
+    
     // Generate 42 days (6 weeks)
     for (let i = 0; i < 42; i++) {
-      const dateStr = current.toISOString().split('T')[0];
+      const dateStr = formatDateString(current);
       const isCurrentMonth = current.getMonth() === month;
-      const isToday = dateStr === new Date().toISOString().split('T')[0];
+      const isToday = dateStr === todayStr;
       const isSelected = dateStr === value;
       const isDisabled = isDateDisabled(dateStr);
       
@@ -155,7 +167,11 @@ export default function DatePicker({
 
   const formatInputValue = (dateStr: string) => {
     if (!dateStr) return '';
-    const date = new Date(dateStr);
+    
+    // Parse the date string (YYYY-MM-DD) without timezone conversion
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+    
     return date.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
@@ -255,14 +271,14 @@ export default function DatePicker({
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
-                const today = new Date().toISOString().split('T')[0];
+                const today = formatDateString(new Date());
                 if (!isDateDisabled(today)) {
                   onChange(today);
                   setIsOpen(false);
                 }
               }}
               className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
-              disabled={isDateDisabled(new Date().toISOString().split('T')[0])}
+              disabled={isDateDisabled(formatDateString(new Date()))}
             >
               Today
             </button>

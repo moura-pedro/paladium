@@ -30,8 +30,9 @@ export async function GET(req: NextRequest, { params }: Params) {
 
     return NextResponse.json({
       bookings: bookings.map(b => ({
-        from: b.from.toISOString().split('T')[0],
-        to: b.to.toISOString().split('T')[0],
+        // Format dates using UTC to avoid timezone issues
+        from: `${b.from.getUTCFullYear()}-${String(b.from.getUTCMonth() + 1).padStart(2, '0')}-${String(b.from.getUTCDate()).padStart(2, '0')}`,
+        to: `${b.to.getUTCFullYear()}-${String(b.to.getUTCMonth() + 1).padStart(2, '0')}-${String(b.to.getUTCDate()).padStart(2, '0')}`,
         status: b.status,
       })),
     });
