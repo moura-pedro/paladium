@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { CldUploadWidget } from 'next-cloudinary';
+import LocationSelector, { LocationData } from '@/components/LocationSelector';
 
 interface Props {
   userId: string;
@@ -12,13 +13,13 @@ export default function AddPropertyForm({ userId }: Props) {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    location: '',
     price: '',
     maxGuests: '',
     bedrooms: '',
     bathrooms: '',
     amenities: '',
   });
+  const [location, setLocation] = useState<LocationData | null>(null);
   const [images, setImages] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -34,6 +35,12 @@ export default function AddPropertyForm({ userId }: Props) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    if (!location) {
+      setError('Please select a location');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -44,7 +51,7 @@ export default function AddPropertyForm({ userId }: Props) {
           hostId: userId,
           title: formData.title,
           description: formData.description,
-          location: formData.location,
+          location: location,
           price: Number(formData.price),
           maxGuests: Number(formData.maxGuests),
           bedrooms: Number(formData.bedrooms),
@@ -97,14 +104,9 @@ export default function AddPropertyForm({ userId }: Props) {
       </div>
 
       <div>
-        <label className="block text-sm font-medium mb-2">Location</label>
-        <input
-          type="text"
-          name="location"
-          value={formData.location}
-          onChange={handleChange}
-          placeholder="Lake Tahoe, CA"
-          className="w-full glass-light px-4 py-3 rounded-xl border-0 focus:ring-2 focus:ring-foreground/20 outline-none"
+        <LocationSelector
+          value={location || undefined}
+          onChange={setLocation}
           required
         />
       </div>

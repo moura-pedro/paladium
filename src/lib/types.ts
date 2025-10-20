@@ -4,6 +4,14 @@ export type UserRole = 'guest' | 'host';
 
 export type BookingStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed';
 
+export interface LocationData {
+  country: string;
+  countryCode: string;
+  state: string;
+  stateCode: string;
+  city: string;
+}
+
 export interface User {
   id: string;
   clerkId: string;
@@ -20,7 +28,7 @@ export interface Property {
   description: string;
   images: string[];
   price: number;
-  location: string;
+  location: LocationData | string; // Support both structured and legacy string format
   amenities: string[];
   maxGuests: number;
   bedrooms: number;

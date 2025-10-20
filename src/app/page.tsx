@@ -4,6 +4,7 @@ import { getCurrentUser } from '@/lib/auth';
 import dbConnect from '@/lib/db';
 import Property from '@/lib/models/Property';
 import { UserButton } from '@clerk/nextjs';
+import { formatLocation } from '@/lib/locationHelpers';
 
 export default async function HomePage() {
   const user = await getCurrentUser();
@@ -128,7 +129,7 @@ export default async function HomePage() {
                 
                 <div className="p-4">
                   <h3 className="font-semibold text-lg mb-1">{property.title}</h3>
-                  <p className="text-sm text-foreground/70 mb-2">{property.location}</p>
+                  <p className="text-sm text-foreground/70 mb-2">{formatLocation(property.location)}</p>
                   <div className="flex justify-between items-center">
                     <span className="font-bold text-lg">
                       ${property.price}

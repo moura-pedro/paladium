@@ -5,6 +5,7 @@ import dbConnect from '@/lib/db';
 import Property from '@/lib/models/Property';
 import User from '@/lib/models/User';
 import { UserButton } from '@clerk/nextjs';
+import { formatLocation } from '@/lib/locationHelpers';
 
 export default async function HostDashboard() {
   const user = await requireHost();
@@ -83,7 +84,7 @@ export default async function HostDashboard() {
                 
                 <div className="p-4">
                   <h3 className="font-semibold text-lg mb-1">{property.title}</h3>
-                  <p className="text-sm text-foreground/70 mb-2">{property.location}</p>
+                  <p className="text-sm text-foreground/70 mb-2">{formatLocation(property.location)}</p>
                   <div className="flex justify-between items-center mb-3">
                     <span className="font-bold text-lg">
                       ${property.price}

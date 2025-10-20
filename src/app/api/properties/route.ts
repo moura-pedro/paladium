@@ -70,7 +70,27 @@ export async function GET(req: NextRequest) {
     const query: any = {};
 
     if (location) {
-      query.location = { $regex: location, $options: 'i' };
+      // Parse location search - split by comma to handle "City, State" format
+      const locationParts = location.split(',').map(part => part.trim());
+      
+      const orConditions: any[] = [
+        { location: { $regex: location, $options: 'i' } }, // Legacy string format
+      ];
+      
+      // Add conditions for each part of the location
+      locationParts.forEach(part => {
+        if (part) {
+          orConditions.push(
+            { 'location.city': { $regex: part, $options: 'i' } },
+            { 'location.state': { $regex: part, $options: 'i' } },
+            { 'location.stateCode': { $regex: part, $options: 'i' } },
+            { 'location.country': { $regex: part, $options: 'i' } },
+            { 'location.countryCode': { $regex: part, $options: 'i' } }
+          );
+        }
+      });
+      
+      query.$or = orConditions;
     }
 
     if (maxPrice) {

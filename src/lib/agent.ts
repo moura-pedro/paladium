@@ -4,6 +4,7 @@ import Property from './models/Property';
 import Booking, { IBooking } from './models/Booking';
 import Conversation, { IMessage } from './models/Conversation';
 import { Types } from 'mongoose';
+import { formatLocation } from './locationHelpers';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -159,7 +160,27 @@ export async function searchProperties(params: {
   const query: any = {};
 
   if (params.location) {
-    query.location = { $regex: params.location, $options: 'i' };
+    // Parse location search - split by comma to handle "City, State" format
+    const locationParts = params.location.split(',').map(part => part.trim());
+    
+    const orConditions: any[] = [
+      { location: { $regex: params.location, $options: 'i' } }, // Legacy string format
+    ];
+    
+    // Add conditions for each part of the location
+    locationParts.forEach(part => {
+      if (part) {
+        orConditions.push(
+          { 'location.city': { $regex: part, $options: 'i' } },
+          { 'location.state': { $regex: part, $options: 'i' } },
+          { 'location.stateCode': { $regex: part, $options: 'i' } },
+          { 'location.country': { $regex: part, $options: 'i' } },
+          { 'location.countryCode': { $regex: part, $options: 'i' } }
+        );
+      }
+    });
+    
+    query.$or = orConditions;
   }
 
   if (params.maxPrice) {
@@ -203,17 +224,26 @@ export async function searchProperties(params: {
     properties = availableProperties;
   }
 
-  return properties.map((p) => ({
-    id: p._id.toString(),
+  const results = properties.map((p, index) => ({
+    propertyId: p._id.toString(), // Primary field name for clarity
+    id: p._id.toString(), // Keep for backward compatibility
+    index: index + 1,
     title: p.title,
     description: p.description,
-    location: p.location,
+    location: formatLocation(p.location),
     price: p.price,
     maxGuests: p.maxGuests,
     bedrooms: p.bedrooms,
     bathrooms: p.bathrooms,
     amenities: p.amenities,
   }));
+  
+  console.log('✓ Returning search results:');
+  results.forEach(r => {
+    console.log(`  ${r.index}. ${r.title} (ID: ${r.propertyId})`);
+  });
+  
+  return results;
 }
 
 // Get property details
@@ -230,7 +260,7 @@ export async function getPropertyDetails(propertyId: string) {
     id: property._id.toString(),
     title: property.title,
     description: property.description,
-    location: property.location,
+    location: formatLocation(property.location),
     price: property.price,
     maxGuests: property.maxGuests,
     bedrooms: property.bedrooms,
@@ -248,7 +278,17 @@ export async function prepareBooking(params: {
 }) {
   await dbConnect();
 
+  console.log('prepareBooking called with params:', params);
+
+  // Validate property ID format (MongoDB ObjectId is 24 hex characters)
+  if (!params.propertyId || !/^[0-9a-fA-F]{24}$/.test(params.propertyId)) {
+    console.error('Invalid property ID format:', params.propertyId);
+    throw new Error(`Invalid property ID format. Property IDs must be 24-character hexadecimal strings (e.g., "68f13bd6ad824083a9a5a63b"), but received: "${params.propertyId}". Please search for properties first and use the exact "id" field from the search results.`);
+  }
+
   const property = await Property.findById(params.propertyId);
+
+  console.log('Property found:', property ? property.title : 'NOT FOUND');
 
   if (!property) {
     throw new Error('Property not found');
@@ -262,7 +302,10 @@ export async function prepareBooking(params: {
     throw new Error('Check-out date must be after check-in date');
   }
 
-  if (checkInDate < new Date()) {
+  // Check if date is in the past (with tolerance for same day)
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  if (checkInDate < today) {
     throw new Error('Check-in date cannot be in the past');
   }
 
@@ -290,7 +333,7 @@ export async function prepareBooking(params: {
     property: {
       id: property._id.toString(),
       title: property.title,
-      location: property.location,
+      location: formatLocation(property.location),
       pricePerNight: property.price,
     },
     checkIn: params.checkIn,
@@ -309,6 +352,12 @@ export async function confirmBooking(params: {
   checkOut: string;
 }) {
   await dbConnect();
+
+  // Validate property ID format (MongoDB ObjectId is 24 hex characters)
+  if (!params.propertyId || !/^[0-9a-fA-F]{24}$/.test(params.propertyId)) {
+    console.error('Invalid property ID format:', params.propertyId);
+    throw new Error(`Invalid property ID format. Property IDs must be 24-character hexadecimal strings (e.g., "68f13bd6ad824083a9a5a63b"), but received: "${params.propertyId}". Please search for properties first and use the exact "id" field from the search results.`);
+  }
 
   const property = await Property.findById(params.propertyId);
 
@@ -446,10 +495,11 @@ export async function processAgentMessage(
   }
 
   // Build messages array for OpenAI
+  const currentDate = new Date().toISOString().split('T')[0];
   const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
     {
       role: 'system',
-      content: `You are a helpful AI assistant for Paladium, a property rental platform. 
+      content: `You are a helpful AI assistant for Paladium, a property rental platform. Today's date is ${currentDate}. 
 
 Your capabilities:
 - Search for properties based on location, price, dates, and guest capacity
@@ -461,31 +511,37 @@ Your capabilities:
 Guidelines:
 - Be friendly, conversational, and helpful
 - When users want to book, always ask for missing information (dates, number of guests)
-- ALWAYS use prepare_booking first to show the summary and total price
-- Only use confirm_booking after the user explicitly agrees to the booking
-- When showing search results, present them clearly with key details
-- Help users understand the booking process
+- When showing search results, display them with their index number (1, 2, 3, etc.) and ALWAYS show the property ID
 - Parse natural language dates (e.g., "next weekend", "December 25th")
+
+CRITICAL RULES FOR PROPERTY IDs:
+- Property IDs are 24-character hexadecimal strings (e.g., "68f13bd6ad824083a9a5a63b")
+- When calling prepare_booking or confirm_booking, you MUST use the exact "propertyId" or "id" field from the search_properties tool results
+- NEVER make up property IDs or use any other number (like index numbers 1, 2, 3)
+- NEVER use long decimal numbers as property IDs
+- If a user says "book the first one", look back at your most recent search_properties results and use the "propertyId" field from the first property
+- If you don't have a valid property ID from recent search results, search again first
+
+Booking flow:
+1. Search for properties → Get the "propertyId" field from results
+2. Use that exact "propertyId" in prepare_booking → Show price summary
+3. After user confirms, use the same "propertyId" in confirm_booking
 
 Remember: Never confirm a booking without the user's explicit approval after seeing the price.`,
     },
   ];
 
   // Add conversation history (limit to last 20 messages to avoid token limits)
+  // Skip 'tool' messages as they require full tool_calls context we don't persist
   const recentMessages = conversation.messages.slice(-20);
   for (const msg of recentMessages) {
-    if (msg.role === 'tool') {
-      messages.push({
-        role: 'tool',
-        content: msg.content,
-        tool_call_id: msg.toolCallId || 'unknown',
-      });
-    } else if (msg.role === 'user' || msg.role === 'assistant') {
+    if (msg.role === 'user' || msg.role === 'assistant') {
       messages.push({
         role: msg.role,
         content: msg.content,
       });
     }
+    // Skip 'tool' and 'system' messages from history
   }
 
   // Add the new user message
@@ -535,13 +591,18 @@ Remember: Never confirm a booking without the user's explicit approval after see
       let functionResult;
 
       try {
+        console.log(`\n🔧 Executing tool: ${functionName}`);
+        console.log('   Arguments:', JSON.stringify(functionArgs, null, 2));
+        
         if (functionName === 'search_properties') {
           functionResult = await searchProperties(functionArgs);
         } else if (functionName === 'get_property_details') {
           functionResult = await getPropertyDetails(functionArgs.propertyId);
         } else if (functionName === 'prepare_booking') {
+          console.log('   → propertyId being used:', functionArgs.propertyId);
           functionResult = await prepareBooking(functionArgs);
         } else if (functionName === 'confirm_booking') {
+          console.log('   → propertyId being used:', functionArgs.propertyId);
           functionArgs.guestId = userId;
           functionResult = await confirmBooking(functionArgs);
         } else if (functionName === 'get_my_bookings') {
@@ -551,12 +612,19 @@ Remember: Never confirm a booking without the user's explicit approval after see
         } else {
           functionResult = { error: 'Unknown function' };
         }
+        
+        console.log(`   ✓ Tool completed successfully`);
 
         toolResults.push({
           name: functionName,
           result: functionResult,
         });
       } catch (error: any) {
+        console.error(`\n❌ Error executing ${functionName}:`, error.message);
+        console.error('   Function args:', JSON.stringify(functionArgs, null, 2));
+        if (error.stack) {
+          console.error('   Stack:', error.stack);
+        }
         functionResult = { error: error.message };
         toolResults.push({
           name: functionName,

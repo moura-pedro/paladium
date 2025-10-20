@@ -3,13 +3,14 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { CldUploadWidget } from 'next-cloudinary';
+import LocationSelector, { LocationData } from '@/components/LocationSelector';
 
 interface Props {
   propertyId: string;
   initialData: {
     title: string;
     description: string;
-    location: string;
+    location: LocationData | string;
     price: string;
     maxGuests: string;
     bedrooms: string;
@@ -20,16 +21,21 @@ interface Props {
 }
 
 export default function EditPropertyForm({ propertyId, initialData }: Props) {
+  // Convert old string location to structured format if needed
+  const initialLocation = typeof initialData.location === 'string' 
+    ? null 
+    : initialData.location;
+
   const [formData, setFormData] = useState({
     title: initialData.title,
     description: initialData.description,
-    location: initialData.location,
     price: initialData.price,
     maxGuests: initialData.maxGuests,
     bedrooms: initialData.bedrooms,
     bathrooms: initialData.bathrooms,
     amenities: initialData.amenities,
   });
+  const [location, setLocation] = useState<LocationData | null>(initialLocation);
   const [images, setImages] = useState<string[]>(initialData.images);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -45,6 +51,12 @@ export default function EditPropertyForm({ propertyId, initialData }: Props) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    if (!location) {
+      setError('Please select a location');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -54,7 +66,7 @@ export default function EditPropertyForm({ propertyId, initialData }: Props) {
         body: JSON.stringify({
           title: formData.title,
           description: formData.description,
-          location: formData.location,
+          location: location,
           price: Number(formData.price),
           maxGuests: Number(formData.maxGuests),
           bedrooms: Number(formData.bedrooms),
@@ -135,16 +147,16 @@ export default function EditPropertyForm({ propertyId, initialData }: Props) {
       </div>
 
       <div>
-        <label className="block text-sm font-medium mb-2">Location</label>
-        <input
-          type="text"
-          name="location"
-          value={formData.location}
-          onChange={handleChange}
-          placeholder="Lake Tahoe, CA"
-          className="w-full glass-light px-4 py-3 rounded-xl border-0 focus:ring-2 focus:ring-foreground/20 outline-none"
+        <LocationSelector
+          value={location || undefined}
+          onChange={setLocation}
           required
         />
+        {typeof initialData.location === 'string' && !location && (
+          <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
+            Note: This property has an old location format ({initialData.location}). Please select a new structured location.
+          </p>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-4">

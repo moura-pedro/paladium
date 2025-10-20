@@ -1,5 +1,13 @@
 import mongoose, { Document, Model, Schema, Types } from 'mongoose';
 
+export interface ILocation {
+  country: string;
+  countryCode: string;
+  state: string;
+  stateCode: string;
+  city: string;
+}
+
 export interface IProperty extends Document {
   _id: Types.ObjectId;
   hostId: Types.ObjectId;
@@ -7,7 +15,7 @@ export interface IProperty extends Document {
   description: string;
   images: string[];
   price: number; // Price per night
-  location: string;
+  location: ILocation | string; // Support both structured and legacy string format
   amenities: string[];
   maxGuests: number;
   bedrooms: number;
@@ -42,7 +50,7 @@ const PropertySchema = new Schema<IProperty>(
       min: 0,
     },
     location: {
-      type: String,
+      type: Schema.Types.Mixed, // Support both string (legacy) and structured object
       required: true,
     },
     amenities: {
@@ -71,7 +79,8 @@ const PropertySchema = new Schema<IProperty>(
 );
 
 // Index for searching properties
-PropertySchema.index({ location: 1, price: 1 });
+PropertySchema.index({ 'location.city': 1, 'location.state': 1, 'location.country': 1, price: 1 });
+PropertySchema.index({ location: 1, price: 1 }); // Keep for legacy string locations
 
 // Prevent model recompilation in development
 const Property: Model<IProperty> = mongoose.models.Property || mongoose.model<IProperty>('Property', PropertySchema);

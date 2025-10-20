@@ -6,6 +6,20 @@ import Booking from '@/lib/models/Booking';
 import Property from '@/lib/models/Property';
 import User from '@/lib/models/User';
 import { UserButton } from '@clerk/nextjs';
+import { formatLocation } from '@/lib/locationHelpers';
+
+// Helper to format date without timezone conversion
+function formatDateOnly(date: Date): string {
+  const year = date.getUTCFullYear();
+  const month = date.getUTCMonth();
+  const day = date.getUTCDate();
+  
+  return new Date(year, month, day).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  });
+}
 
 export default async function MyTripsPage() {
   const user = await requireAuth();
@@ -165,7 +179,7 @@ function BookingCard({ booking, upcoming = false }: { booking: any; upcoming?: b
                 {property?.title || 'Property not available'}
               </h3>
               <p className="text-sm text-foreground/70">
-                📍 {property?.location}
+                📍 {property?.location ? formatLocation(property.location) : 'Location not available'}
               </p>
             </div>
             <span className={`px-3 py-1 rounded-full text-xs font-medium border ${statusColors[booking.status as keyof typeof statusColors]}`}>
@@ -177,13 +191,13 @@ function BookingCard({ booking, upcoming = false }: { booking: any; upcoming?: b
             <div>
               <div className="text-xs text-foreground/50 mb-1">Check-in</div>
               <div className="font-semibold">
-                {from.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                {formatDateOnly(from)}
               </div>
             </div>
             <div>
               <div className="text-xs text-foreground/50 mb-1">Check-out</div>
               <div className="font-semibold">
-                {to.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                {formatDateOnly(to)}
               </div>
             </div>
             <div>

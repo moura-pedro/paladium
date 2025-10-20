@@ -59,11 +59,25 @@ export default function BookingForm({ propertyId, pricePerNight, userId }: Props
       const start = new Date(booking.from);
       const end = new Date(booking.to);
       
+      // Use UTC dates to avoid timezone issues
+      const current = new Date(Date.UTC(
+        start.getUTCFullYear(),
+        start.getUTCMonth(),
+        start.getUTCDate()
+      ));
+      const endUTC = new Date(Date.UTC(
+        end.getUTCFullYear(),
+        end.getUTCMonth(),
+        end.getUTCDate()
+      ));
+      
       // Add all dates in the booking range
-      const current = new Date(start);
-      while (current < end) {
-        disabledDates.push(current.toISOString().split('T')[0]);
-        current.setDate(current.getDate() + 1);
+      while (current < endUTC) {
+        const year = current.getUTCFullYear();
+        const month = String(current.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(current.getUTCDate()).padStart(2, '0');
+        disabledDates.push(`${year}-${month}-${day}`);
+        current.setUTCDate(current.getUTCDate() + 1);
       }
     });
     
@@ -74,15 +88,21 @@ export default function BookingForm({ propertyId, pricePerNight, userId }: Props
   const checkDateOverlap = () => {
     if (!checkIn || !checkOut) return null;
     
-    const selectedStart = new Date(checkIn);
-    const selectedEnd = new Date(checkOut);
-
+    // Use date strings directly for comparison (YYYY-MM-DD format)
     for (const booking of bookedDates) {
       const bookedStart = new Date(booking.from);
       const bookedEnd = new Date(booking.to);
+      const selectedStart = new Date(checkIn);
+      const selectedEnd = new Date(checkOut);
+
+      // Normalize to UTC dates for comparison
+      const bookedStartUTC = Date.UTC(bookedStart.getUTCFullYear(), bookedStart.getUTCMonth(), bookedStart.getUTCDate());
+      const bookedEndUTC = Date.UTC(bookedEnd.getUTCFullYear(), bookedEnd.getUTCMonth(), bookedEnd.getUTCDate());
+      const selectedStartUTC = Date.UTC(selectedStart.getUTCFullYear(), selectedStart.getUTCMonth(), selectedStart.getUTCDate());
+      const selectedEndUTC = Date.UTC(selectedEnd.getUTCFullYear(), selectedEnd.getUTCMonth(), selectedEnd.getUTCDate());
 
       // Check if dates overlap
-      if (selectedStart < bookedEnd && selectedEnd > bookedStart) {
+      if (selectedStartUTC < bookedEndUTC && selectedEndUTC > bookedStartUTC) {
         return booking;
       }
     }

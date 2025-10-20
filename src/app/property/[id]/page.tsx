@@ -7,6 +7,20 @@ import Property from '@/lib/models/Property';
 import User from '@/lib/models/User';
 import Booking from '@/lib/models/Booking';
 import BookingForm from './BookingForm';
+import { formatLocation } from '@/lib/locationHelpers';
+
+// Helper to format date without timezone conversion
+function formatDateOnly(date: Date): string {
+  const year = date.getUTCFullYear();
+  const month = date.getUTCMonth();
+  const day = date.getUTCDate();
+  
+  return new Date(year, month, day).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  });
+}
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -87,7 +101,7 @@ export default async function PropertyDetailPage({ params }: Props) {
             {/* Info */}
             <div className="glass rounded-2xl p-6 mb-6">
               <h1 className="text-3xl font-bold mb-2">{property.title}</h1>
-              <p className="text-foreground/70 mb-4">📍 {property.location}</p>
+              <p className="text-foreground/70 mb-4">📍 {formatLocation(property.location)}</p>
               
               <div className="flex gap-6 mb-6 pb-6 border-b border-foreground/10">
                 <div>
@@ -172,11 +186,11 @@ export default async function PropertyDetailPage({ params }: Props) {
                           <div className="grid grid-cols-3 gap-2 text-sm">
                             <div>
                               <div className="text-xs text-foreground/50">Check-in</div>
-                              <div className="font-medium">{from.toLocaleDateString()}</div>
+                              <div className="font-medium">{formatDateOnly(from)}</div>
                             </div>
                             <div>
                               <div className="text-xs text-foreground/50">Check-out</div>
-                              <div className="font-medium">{to.toLocaleDateString()}</div>
+                              <div className="font-medium">{formatDateOnly(to)}</div>
                             </div>
                             <div>
                               <div className="text-xs text-foreground/50">Total</div>
