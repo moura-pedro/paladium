@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@clerk/nextjs": "^6.33.5",
-    "cloudinary": "^2.7.0",
+    "cloudinary": "^2.8.0",
     "country-state-city": "^3.2.1",
     "mongoose": "^8.19.1",
     "next": "15.5.5",

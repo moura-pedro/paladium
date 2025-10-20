@@ -204,24 +204,46 @@ export default function AddPropertyForm({ userId }: Props) {
             </div>
           )}
           
-          <CldUploadWidget
-            uploadPreset="paladium"
-            onSuccess={(result: any) => {
-              setImages([...images, result.info.secure_url]);
-            }}
-          >
-            {({ open }) => (
-              <button
-                type="button"
-                onClick={() => open()}
-                className="w-full glass-light px-4 py-3 rounded-xl border-2 border-dashed border-foreground/20 hover:border-foreground/40 transition-colors"
-              >
-                + Upload Image
-              </button>
-            )}
-          </CldUploadWidget>
+          {process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME ? (
+            <CldUploadWidget
+              uploadPreset="paladium"
+              options={{
+                multiple: false,
+                maxFiles: 1,
+                resourceType: 'image',
+                clientAllowedFormats: ['jpg', 'jpeg', 'png', 'webp', 'gif'],
+                maxFileSize: 10000000, // 10MB
+                sources: ['local', 'camera'],
+              }}
+              onSuccess={(result: any) => {
+                if (result?.info?.secure_url) {
+                  setImages([...images, result.info.secure_url]);
+                }
+              }}
+              onError={(error: any) => {
+                console.error('Upload error:', error);
+                setError('Failed to upload image. Please try again.');
+              }}
+            >
+              {({ open }) => (
+                <button
+                  type="button"
+                  onClick={() => open()}
+                  className="w-full glass-light px-4 py-3 rounded-xl border-2 border-dashed border-foreground/20 hover:border-foreground/40 transition-colors"
+                >
+                  + Upload Image
+                </button>
+              )}
+            </CldUploadWidget>
+          ) : (
+            <div className="glass-light px-4 py-3 rounded-xl border-2 border-amber-500/20 bg-amber-500/5">
+              <p className="text-amber-600 dark:text-amber-400 text-sm">
+                ⚠️ Cloudinary not configured. Please set NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME in your .env.local file and restart the server.
+              </p>
+            </div>
+          )}
           <p className="text-xs text-foreground/50">
-            Note: You'll need to configure Cloudinary for image uploads to work
+            Supported formats: JPG, PNG, WEBP, GIF (max 10MB per image)
           </p>
         </div>
       </div>
