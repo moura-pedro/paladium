@@ -427,25 +427,43 @@ export async function getMyBookings(userId: string, status?: 'upcoming' | 'past'
     .sort({ from: -1 })
     .lean();
 
-  return bookings.map((b: any) => ({
-    id: b._id.toString(),
+  const results = bookings.map((b: any) => ({
+    bookingId: b._id.toString(), // Primary field name for clarity
+    id: b._id.toString(), // Keep for backward compatibility
     property: {
       id: b.propertyId._id.toString(),
       title: b.propertyId.title,
-      location: b.propertyId.location,
+      location: formatLocation(b.propertyId.location),
     },
     checkIn: b.from.toISOString().split('T')[0],
     checkOut: b.to.toISOString().split('T')[0],
     totalPrice: b.totalPrice,
     status: b.status,
   }));
+  
+  console.log('✓ Returning user bookings:');
+  results.forEach(r => {
+    console.log(`  - ${r.property.title} (Booking ID: ${r.bookingId}) - ${r.checkIn} to ${r.checkOut} [${r.status}]`);
+  });
+  
+  return results;
 }
 
 // Cancel a booking
 export async function cancelBooking(bookingId: string, userId: string) {
   await dbConnect();
 
+  console.log('cancelBooking called with bookingId:', bookingId);
+
+  // Validate booking ID format (MongoDB ObjectId is 24 hex characters)
+  if (!bookingId || !/^[0-9a-fA-F]{24}$/.test(bookingId)) {
+    console.error('Invalid booking ID format:', bookingId);
+    throw new Error(`Invalid booking ID format. Booking IDs must be 24-character hexadecimal strings (e.g., "68f1277a77560bae4b881b6e"), but received: "${bookingId}". Please use get_my_bookings to retrieve valid booking IDs.`);
+  }
+
   const booking = await Booking.findById(bookingId).populate('propertyId');
+
+  console.log('Booking found:', booking ? `${(booking.propertyId as any)?.title} (${booking.status})` : 'NOT FOUND');
 
   if (!booking) {
     throw new Error('Booking not found');
@@ -514,18 +532,27 @@ Guidelines:
 - When showing search results, display them with their index number (1, 2, 3, etc.) and ALWAYS show the property ID
 - Parse natural language dates (e.g., "next weekend", "December 25th")
 
-CRITICAL RULES FOR PROPERTY IDs:
-- Property IDs are 24-character hexadecimal strings (e.g., "68f13bd6ad824083a9a5a63b")
-- When calling prepare_booking or confirm_booking, you MUST use the exact "propertyId" or "id" field from the search_properties tool results
-- NEVER make up property IDs or use any other number (like index numbers 1, 2, 3)
-- NEVER use long decimal numbers as property IDs
-- If a user says "book the first one", look back at your most recent search_properties results and use the "propertyId" field from the first property
-- If you don't have a valid property ID from recent search results, search again first
+CRITICAL RULES FOR IDs:
+All IDs (property IDs, booking IDs) are 24-character hexadecimal strings (e.g., "68f13bd6ad824083a9a5a63b")
+
+Property IDs:
+- When calling prepare_booking or confirm_booking, use the exact "propertyId" field from search_properties results
+- NEVER make up property IDs or use index numbers (1, 2, 3)
+- If user says "book the first one", use the "propertyId" from the first property in your most recent search results
+
+Booking IDs:
+- When calling cancel_booking, use the exact "bookingId" field from get_my_bookings results
+- NEVER make up booking IDs or use index numbers
+- Always call get_my_bookings first before canceling to get valid booking IDs
 
 Booking flow:
-1. Search for properties → Get the "propertyId" field from results
-2. Use that exact "propertyId" in prepare_booking → Show price summary
-3. After user confirms, use the same "propertyId" in confirm_booking
+1. Search for properties → Get "propertyId" from results
+2. Use that "propertyId" in prepare_booking → Show price summary
+3. After user confirms, use same "propertyId" in confirm_booking
+
+Cancellation flow:
+1. Call get_my_bookings → Get "bookingId" from results
+2. Use that exact "bookingId" in cancel_booking
 
 Remember: Never confirm a booking without the user's explicit approval after seeing the price.`,
     },
@@ -608,6 +635,7 @@ Remember: Never confirm a booking without the user's explicit approval after see
         } else if (functionName === 'get_my_bookings') {
           functionResult = await getMyBookings(userId, functionArgs.status);
         } else if (functionName === 'cancel_booking') {
+          console.log('   → bookingId being used:', functionArgs.bookingId);
           functionResult = await cancelBooking(functionArgs.bookingId, userId);
         } else {
           functionResult = { error: 'Unknown function' };
