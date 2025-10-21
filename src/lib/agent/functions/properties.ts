@@ -84,20 +84,25 @@ export async function searchProperties(params: SearchPropertiesParams) {
     properties = availableProperties;
   }
 
-  const results = properties.map((p, index) => ({
-    propertyId: p._id.toString(), // Primary field name for clarity
-    id: p._id.toString(), // Keep for backward compatibility
-    index: index + 1,
-    title: p.title,
-    description: p.description,
-    location: formatLocation(p.location),
-    price: p.price,
-    maxGuests: p.maxGuests,
-    bedrooms: p.bedrooms,
-    bathrooms: p.bathrooms,
-    amenities: p.amenities,
-    images: p.images || [], // Include images for display
-  }));
+  const results = properties.map((p, index) => {
+    const propertyId = p._id.toString();
+    console.log(`Processing property ${index + 1}: ${p.title}, ObjectId: ${p._id}, toString(): ${propertyId}, length: ${propertyId.length}`);
+    
+    return {
+      propertyId: propertyId, // Primary field name for clarity
+      id: propertyId, // Keep for backward compatibility
+      index: index + 1,
+      title: p.title,
+      description: p.description,
+      location: formatLocation(p.location),
+      price: p.price,
+      maxGuests: p.maxGuests,
+      bedrooms: p.bedrooms,
+      bathrooms: p.bathrooms,
+      amenities: p.amenities,
+      images: p.images || [], // Include images for display
+    };
+  });
   
   console.log('✓ Returning search results:');
   results.forEach(r => {

@@ -73,15 +73,32 @@ export async function prepareBooking(params: BookingParams) {
   await dbConnect();
 
   console.log('prepareBooking called with params:', params);
+  console.log('prepareBooking propertyId type:', typeof params.propertyId);
+  console.log('prepareBooking propertyId length:', params.propertyId?.length);
 
   validatePropertyId(params.propertyId);
 
+  console.log('prepareBooking searching for property with ID:', params.propertyId);
+  
+  // Debug: Check all properties in the database
+  const allProperties = await Property.find({}).limit(5).lean();
+  console.log(`Total properties in DB check: ${allProperties.length} (showing first 5)`);
+  allProperties.forEach(p => {
+    console.log(`  - ${p.title} (ID: ${p._id.toString()})`);
+  });
+  
   const property = await Property.findById(params.propertyId);
 
   console.log('Property found:', property ? property.title : 'NOT FOUND');
+  console.log('Property ID in DB:', property ? property._id.toString() : 'N/A');
 
   if (!property) {
-    throw new Error('Property not found');
+    // Provide helpful error message with available properties
+    const availableCount = await Property.countDocuments();
+    throw new Error(
+      `Property not found. The property ID "${params.propertyId}" does not exist in the database. ` +
+      `There are ${availableCount} properties available. Please search for properties first using search_properties.`
+    );
   }
 
   const checkInDate = new Date(params.checkIn);
@@ -135,9 +152,17 @@ export async function prepareBooking(params: BookingParams) {
 export async function confirmBooking(params: ConfirmBookingParams) {
   await dbConnect();
 
+  console.log('confirmBooking called with propertyId:', params.propertyId);
+  console.log('propertyId type:', typeof params.propertyId);
+  console.log('propertyId length:', params.propertyId?.length);
+
   validatePropertyId(params.propertyId);
 
+  console.log('Searching for property with ID:', params.propertyId);
   const property = await Property.findById(params.propertyId);
+
+  console.log('Property found:', property ? property.title : 'NOT FOUND');
+  console.log('Property found (full):', property ? JSON.stringify({ id: property._id, title: property.title }) : 'NOT FOUND');
 
   if (!property) {
     throw new Error('Property not found');
@@ -279,9 +304,25 @@ export async function cancelBooking(bookingId: string, userId: string) {
   booking.status = 'cancelled';
   await booking.save();
 
+  // Return the updated booking data so UI can show the cancelled status
+  const property = booking.propertyId as any;
   return {
     success: true,
-    message: `Booking cancelled successfully. Your reservation for ${(booking.propertyId as any).title} has been cancelled.`,
+    message: `Booking cancelled successfully. Your reservation for ${property.title} has been cancelled.`,
+    booking: {
+      bookingId: booking._id.toString(),
+      id: booking._id.toString(),
+      property: {
+        id: property._id.toString(),
+        title: property.title,
+        location: formatLocation(property.location),
+        images: property.images || [],
+      },
+      checkIn: `${booking.from.getUTCFullYear()}-${String(booking.from.getUTCMonth() + 1).padStart(2, '0')}-${String(booking.from.getUTCDate()).padStart(2, '0')}`,
+      checkOut: `${booking.to.getUTCFullYear()}-${String(booking.to.getUTCMonth() + 1).padStart(2, '0')}-${String(booking.to.getUTCDate()).padStart(2, '0')}`,
+      totalPrice: booking.totalPrice,
+      status: 'cancelled',
+    },
   };
 }
 

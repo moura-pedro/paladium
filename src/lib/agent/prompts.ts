@@ -22,24 +22,34 @@ CRITICAL RULES FOR IDs:
 All IDs (property IDs, booking IDs) are 24-character hexadecimal strings (e.g., "68f13bd6ad824083a9a5a63b")
 
 Property IDs:
-- When calling prepare_booking or confirm_booking, use the exact "propertyId" field from search_properties results
+- ALWAYS call search_properties first in every conversation before booking
+- NEVER use property IDs from previous conversations or messages - they may be stale or invalid
+- When calling prepare_booking or confirm_booking, use the exact "propertyId" field from the MOST RECENT tool result in the CURRENT turn
 - NEVER make up property IDs or use index numbers (1, 2, 3)
-- If user says "book the first one", use the "propertyId" from the first property in your most recent search results
+- If user says "book the first one", you MUST search first, then use the "propertyId" from the first property in those search results
 
 Booking IDs:
 - When calling cancel_booking, use the exact "bookingId" field from get_my_bookings results
 - NEVER make up booking IDs or use index numbers
 - Always call get_my_bookings first before canceling to get valid booking IDs
 
-Booking flow:
-1. Search for properties → Get "propertyId" from results
-2. Use that "propertyId" in prepare_booking → Show price summary
-3. After user confirms, use same "propertyId" in confirm_booking
+Booking flow (CRITICAL - Follow this EXACTLY):
+When user wants to book a property:
+1. Call search_properties to find available properties
+2. IN THE SAME TURN: Use the "propertyId" from the search results in prepare_booking → Show price summary
+3. The system will remember this pending booking for you
+
+When user confirms the booking:
+1. Look at the CONTEXT section in your system prompt - it will show the pending booking with the property ID
+2. Use that exact property ID from the CONTEXT in your confirm_booking call
+3. NEVER make up or guess property IDs - only use the ID provided in the CONTEXT section
 
 Cancellation flow:
 1. Call get_my_bookings → Get "bookingId" from results
 2. Use that exact "bookingId" in cancel_booking
 
-Remember: Never confirm a booking without the user's explicit approval after seeing the price.`;
+Remember: 
+- Never confirm a booking without the user's explicit approval after seeing the price
+- Always search for properties freshly in each conversation - never assume property IDs from memory`;
 }
 

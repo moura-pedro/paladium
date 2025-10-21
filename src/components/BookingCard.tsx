@@ -30,14 +30,19 @@ export default function BookingCard({ booking, onCancel }: BookingCardProps) {
     ? booking.property.images[0] 
     : null;
 
-  // Calculate nights
-  const checkInDate = new Date(booking.checkIn);
-  const checkOutDate = new Date(booking.checkOut);
+  // Parse date strings without timezone conversion issues
+  const parseDate = (dateStr: string) => {
+    const [year, month, day] = dateStr.split('-').map(Number);
+    return new Date(year, month - 1, day); // month is 0-indexed
+  };
+  
+  const checkInDate = parseDate(booking.checkIn);
+  const checkOutDate = parseDate(booking.checkOut);
   const nights = Math.ceil((checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60 * 24));
 
-  // Format dates
+  // Format dates without timezone conversion
   const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
+    const date = parseDate(dateStr);
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 

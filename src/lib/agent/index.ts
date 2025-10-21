@@ -68,10 +68,24 @@ function buildMessagesArray(
   newMessage: string,
   systemPrompt: string
 ): OpenAI.Chat.ChatCompletionMessageParam[] {
+  let systemContent = systemPrompt;
+  
+  // Add pending booking context if available
+  if (conversation.pendingBooking) {
+    systemContent += `\n\nCONTEXT: There is a pending booking:
+- Property: ${conversation.pendingBooking.propertyTitle}
+- Property ID: ${conversation.pendingBooking.propertyId}
+- Check-in: ${conversation.pendingBooking.checkIn}
+- Check-out: ${conversation.pendingBooking.checkOut}
+- Total Price: $${conversation.pendingBooking.totalPrice}
+
+If the user wants to confirm this booking, use this property ID: ${conversation.pendingBooking.propertyId}`;
+  }
+  
   const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
     {
       role: 'system',
-      content: systemPrompt,
+      content: systemContent,
     },
   ];
 
@@ -187,6 +201,24 @@ export async function processAgentMessage(
       try {
         functionResult = await executeToolCall(functionName, functionArgs, userId);
 
+        // Store pending booking when prepare_booking is called
+        if (functionName === 'prepare_booking' && functionResult && !functionResult.error) {
+          conversation.pendingBooking = {
+            propertyId: functionResult.property.id,
+            checkIn: functionResult.checkIn,
+            checkOut: functionResult.checkOut,
+            totalPrice: functionResult.totalPrice,
+            propertyTitle: functionResult.property.title,
+          };
+          console.log('💾 Stored pending booking:', conversation.pendingBooking);
+        }
+
+        // Clear pending booking when confirm_booking succeeds
+        if (functionName === 'confirm_booking' && functionResult && functionResult.success) {
+          conversation.pendingBooking = undefined;
+          console.log('✅ Cleared pending booking after confirmation');
+        }
+
         toolResults.push({
           name: functionName,
           result: functionResult,
@@ -258,8 +290,24 @@ export async function processAgentMessage(
   // Extract booking data if get_my_bookings was called
   let bookings = undefined;
   const getMyBookingsResult = toolResults.find(r => r.name === 'get_my_bookings');
+  const cancelBookingResult = toolResults.find(r => r.name === 'cancel_booking');
+  
   if (getMyBookingsResult && Array.isArray(getMyBookingsResult.result)) {
     bookings = getMyBookingsResult.result;
+    
+    // If cancel_booking was called, update the cancelled booking in the array
+    if (cancelBookingResult && cancelBookingResult.result?.success && cancelBookingResult.result?.booking) {
+      const cancelledBooking = cancelBookingResult.result.booking;
+      const cancelledBookingId = cancelledBooking.bookingId;
+      
+      // Find and replace the old booking with the updated cancelled one
+      const bookingIndex = bookings.findIndex((b: any) => b.bookingId === cancelledBookingId);
+      if (bookingIndex !== -1) {
+        bookings[bookingIndex] = cancelledBooking;
+        console.log(`🔄 Updated cancelled booking status in response: ${cancelledBookingId}`);
+      }
+    }
+    
     console.log(`📅 Including ${bookings.length} bookings in response`);
   }
 

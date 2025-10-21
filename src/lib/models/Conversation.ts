@@ -8,10 +8,19 @@ export interface IMessage {
   toolName?: string;
 }
 
+export interface IPendingBooking {
+  propertyId: string;
+  checkIn: string;
+  checkOut: string;
+  totalPrice: number;
+  propertyTitle: string;
+}
+
 export interface IConversation extends Document {
   _id: Types.ObjectId;
   userId: Types.ObjectId;
   messages: IMessage[];
+  pendingBooking?: IPendingBooking;
   lastActive: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -53,6 +62,16 @@ const ConversationSchema = new Schema<IConversation>(
     messages: {
       type: [MessageSchema],
       default: [],
+    },
+    pendingBooking: {
+      type: {
+        propertyId: String,
+        checkIn: String,
+        checkOut: String,
+        totalPrice: Number,
+        propertyTitle: String,
+      },
+      required: false,
     },
     lastActive: {
       type: Date,
