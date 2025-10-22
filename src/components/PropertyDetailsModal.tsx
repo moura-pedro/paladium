@@ -69,21 +69,39 @@ export default function PropertyDetailsModal({ property, isOpen, onClose }: Prop
 
         {/* Image Gallery */}
         {currentImage ? (
-          <div className="relative w-full h-64 md:h-96 bg-gradient-to-br from-foreground/10 to-foreground/5">
-            <Image
-              src={currentImage}
-              alt={property.title}
-              fill
-              className="object-cover"
-              sizes="(max-width: 768px) 100vw, 896px"
-              priority
-            />
+          <>
+            <div className="relative w-full h-64 md:h-96 bg-gradient-to-br from-foreground/10 to-foreground/5">
+              <Image
+                src={currentImage}
+                alt={property.title}
+                fill
+                className="object-cover"
+                sizes="(max-width: 768px) 100vw, 896px"
+                priority
+              />
+              {property.images && property.images.length > 1 && (
+                <div className="absolute bottom-4 right-4 bg-black/70 text-white px-3 py-1.5 rounded-lg text-sm font-medium backdrop-blur-sm">
+                  📷 {property.images.length} {property.images.length === 1 ? 'photo' : 'photos'}
+                </div>
+              )}
+            </div>
+            
+            {/* Image Thumbnails */}
             {property.images && property.images.length > 1 && (
-              <div className="absolute bottom-4 right-4 glass px-3 py-1 rounded-full text-sm">
-                1 / {property.images.length}
+              <div className={`grid gap-2 p-3 bg-foreground/5 ${
+                property.images.length === 2 ? 'grid-cols-2' :
+                property.images.length === 3 ? 'grid-cols-3' :
+                property.images.length === 4 ? 'grid-cols-4' :
+                'grid-cols-5'
+              }`}>
+                {property.images.slice(1).map((img: string, idx: number) => (
+                  <div key={idx} className="aspect-square relative rounded-lg overflow-hidden hover:opacity-80 transition-opacity">
+                    <Image src={img} alt={`${property.title} ${idx + 2}`} fill className="object-cover" sizes="200px" />
+                  </div>
+                ))}
               </div>
             )}
-          </div>
+          </>
         ) : (
           <div className="relative w-full h-64 md:h-96 bg-gradient-to-br from-foreground/10 to-foreground/5 flex items-center justify-center">
             <svg className="w-24 h-24 text-foreground/20" fill="none" viewBox="0 0 24 24" stroke="currentColor">

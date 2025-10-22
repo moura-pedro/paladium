@@ -60,6 +60,11 @@ export default function PropertyCard({ property, onViewDetails }: PropertyCardPr
               #{property.index}
             </div>
           )}
+          {property.images && property.images.length > 1 && (
+            <div className="absolute top-3 right-3 bg-black/70 text-white px-2 py-1 rounded-lg text-xs font-medium backdrop-blur-sm flex items-center gap-1">
+              📷 {property.images.length}
+            </div>
+          )}
         </div>
 
         {/* Content Section */}

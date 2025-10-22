@@ -23,6 +23,7 @@ export default function AddPropertyForm({ userId }: Props) {
   const [images, setImages] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [uploadingImages, setUploadingImages] = useState<string[]>([]);
   const router = useRouter();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -185,20 +186,26 @@ export default function AddPropertyForm({ userId }: Props) {
       </div>
 
       <div>
-        <label className="block text-sm font-medium mb-2">Images</label>
+        <label className="block text-sm font-medium mb-2">
+          Images {images.length > 0 && <span className="text-foreground/50">({images.length}/10)</span>}
+        </label>
         <div className="space-y-3">
           {images.length > 0 && (
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-3 gap-3">
               {images.map((url, idx) => (
-                <div key={idx} className="aspect-square relative rounded-lg overflow-hidden glass-light">
+                <div key={idx} className="aspect-square relative rounded-lg overflow-hidden glass-light group">
                   <img src={url} alt={`Upload ${idx + 1}`} className="w-full h-full object-cover" />
                   <button
                     type="button"
                     onClick={() => setImages(images.filter((_, i) => i !== idx))}
-                    className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
+                    className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold hover:bg-red-600 transition-all opacity-90 group-hover:opacity-100 shadow-lg"
+                    title="Remove image"
                   >
                     ×
                   </button>
+                  <div className="absolute bottom-2 left-2 bg-black/60 text-white px-2 py-1 rounded text-xs font-medium">
+                    #{idx + 1}
+                  </div>
                 </div>
               ))}
             </div>
@@ -208,30 +215,55 @@ export default function AddPropertyForm({ userId }: Props) {
             <CldUploadWidget
               uploadPreset="paladium"
               options={{
-                multiple: false,
-                maxFiles: 1,
+                multiple: true,
+                maxFiles: 10 - images.length,
                 resourceType: 'image',
                 clientAllowedFormats: ['jpg', 'jpeg', 'png', 'webp', 'gif'],
                 maxFileSize: 10000000, // 10MB
-                sources: ['local', 'camera'],
+                sources: ['local', 'camera', 'url'],
+                folder: 'paladium-properties',
+                tags: ['property-images'],
               }}
               onSuccess={(result: any) => {
+                console.log('Upload result:', result);
                 if (result?.info?.secure_url) {
-                  setImages([...images, result.info.secure_url]);
+                  setImages(prev => {
+                    // Check if this URL is already in the array to prevent duplicates
+                    if (!prev.includes(result.info.secure_url)) {
+                      const newImages = [...prev, result.info.secure_url];
+                      console.log('Updated images array:', newImages);
+                      return newImages;
+                    }
+                    return prev;
+                  });
                 }
+              }}
+              onUpload={(result: any) => {
+                console.log('Upload started:', result);
+              }}
+              onUploadAdded={(result: any) => {
+                console.log('Upload added:', result);
               }}
               onError={(error: any) => {
                 console.error('Upload error:', error);
                 setError('Failed to upload image. Please try again.');
+              }}
+              onClose={(result: any) => {
+                console.log('Upload widget closed:', result);
               }}
             >
               {({ open }) => (
                 <button
                   type="button"
                   onClick={() => open()}
-                  className="w-full glass-light px-4 py-3 rounded-xl border-2 border-dashed border-foreground/20 hover:border-foreground/40 transition-colors"
+                  disabled={images.length >= 10}
+                  className="w-full glass-light px-4 py-4 rounded-xl border-2 border-dashed border-foreground/20 hover:border-foreground/40 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  + Upload Image
+                  {images.length >= 10 ? (
+                    <span>Maximum 10 images reached</span>
+                  ) : (
+                    <span>+ Upload Images (Select Multiple)</span>
+                  )}
                 </button>
               )}
             </CldUploadWidget>
@@ -243,7 +275,7 @@ export default function AddPropertyForm({ userId }: Props) {
             </div>
           )}
           <p className="text-xs text-foreground/50">
-            Supported formats: JPG, PNG, WEBP, GIF (max 10MB per image)
+            📷 You can upload up to 10 images. Select multiple files at once! Supported formats: JPG, PNG, WEBP, GIF (max 10MB per image)
           </p>
         </div>
       </div>

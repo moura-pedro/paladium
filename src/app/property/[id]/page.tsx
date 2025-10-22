@@ -70,30 +70,44 @@ export default async function PropertyDetailPage({ params }: Props) {
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Property Details */}
           <div className="lg:col-span-2">
-            {/* Images */}
+            {/* Images Gallery */}
             <div className="glass rounded-2xl overflow-hidden mb-6">
-              <div className="aspect-[16/9] relative bg-foreground/5">
-                {property.images?.[0] ? (
-                  <Image
-                    src={property.images[0]}
-                    alt={property.title}
-                    fill
-                    className="object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-6xl">
-                    🏠
+              {property.images && property.images.length > 0 ? (
+                <>
+                  {/* Main Image */}
+                  <div className="aspect-[16/9] relative bg-foreground/5">
+                    <Image
+                      src={property.images[0]}
+                      alt={property.title}
+                      fill
+                      className="object-cover"
+                    />
+                    {property.images.length > 1 && (
+                      <div className="absolute bottom-4 right-4 bg-black/70 text-white px-3 py-1.5 rounded-lg text-sm font-medium backdrop-blur-sm">
+                        📷 {property.images.length} {property.images.length === 1 ? 'photo' : 'photos'}
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-              
-              {property.images && property.images.length > 1 && (
-                <div className="grid grid-cols-4 gap-2 p-2">
-                  {property.images.slice(1, 5).map((img: string, idx: number) => (
-                    <div key={idx} className="aspect-square relative rounded-lg overflow-hidden">
-                      <Image src={img} alt={`${property.title} ${idx + 2}`} fill className="object-cover" />
+                  
+                  {/* Image Thumbnails Grid */}
+                  {property.images.length > 1 && (
+                    <div className={`grid gap-2 p-3 ${
+                      property.images.length === 2 ? 'grid-cols-2' :
+                      property.images.length === 3 ? 'grid-cols-3' :
+                      property.images.length === 4 ? 'grid-cols-4' :
+                      'grid-cols-5'
+                    }`}>
+                      {property.images.slice(1).map((img: string, idx: number) => (
+                        <div key={idx} className="aspect-square relative rounded-lg overflow-hidden hover:opacity-80 transition-opacity cursor-pointer">
+                          <Image src={img} alt={`${property.title} ${idx + 2}`} fill className="object-cover" />
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  )}
+                </>
+              ) : (
+                <div className="aspect-[16/9] bg-foreground/5 flex items-center justify-center text-6xl">
+                  🏠
                 </div>
               )}
             </div>
