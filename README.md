@@ -66,7 +66,6 @@ yarn dev
 
 4) Open `http://localhost:3000`
 
-For a 5‑minute setup walkthrough, see `QUICKSTART.md`.
 
 ---
 
