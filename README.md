@@ -126,7 +126,6 @@ paladium/
 │   └── middleware.ts                   # Clerk middleware
 ├── next.config.ts                      # Image domains (Cloudinary)
 ├── README.md                           # This file
-├── QUICKSTART.md                       # Setup guide
 ```
 
 ---
